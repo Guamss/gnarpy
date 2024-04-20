@@ -1,56 +1,55 @@
-use std::env::args;
+use std::str::FromStr;
 
-enum Flag {
-    Reverse,
-    Ceasar,
-}
+use clap::{Parser, ValueEnum};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, ValueEnum)]
 enum Action {
     Uppercase,
     Lowercase,
 }
 
-impl<'a> TryFrom<&'a str> for Flag {
-    type Error = &'a str;
-    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
-        match value {
-            "-r" | "-R" => Ok(Flag::Reverse),
-            "-c" | "-C" => Ok(Flag::Ceasar),
-            v => Err(v),
+impl FromStr for Action {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "uppercase" => Ok(Action::Uppercase),
+            "lowercase" => Ok(Action::Lowercase),
+            _ => Err(()),
         }
     }
 }
 
-impl<'a> TryFrom<&'a str> for Action {
-    type Error = &'a str;
-    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
-        match value {
-            "uppercase" => Ok(Action::Uppercase),
-            "lowercase" => Ok(Action::Lowercase),
-            v => Err(v),
-        }
-    }
+#[derive(Parser, Debug)]
+struct Args {
+    /// action to apply on the string
+    action: Action,
+
+    /// input string
+    input: String,
+
+    /// reverse input chars
+    #[arg(short, long, action)]
+    reverse: bool,
+
+    /// shift each char by a certain amount
+    #[arg(short, long, default_value_t = 0)]
+    cæsar: u8,
 }
 
 fn main() {
-    let args: Vec<String> = args().collect::<Vec<String>>().split_off(1);
-    let action = args.get(0).unwrap().as_str().try_into();
-    let input = args.get(1).expect("Gnarpy has found no input 👽");
-
-    let flag: Option<Flag> = match args.get(2) {
-        Some(quelqeuchosde) => quelqeuchosde.as_str().try_into().ok(),
-        None => None,
+    let args = Args::parse();
+    let output = args.input.clone();
+    let mut output = match args.action {
+        Action::Uppercase => output.to_uppercase(),
+        Action::Lowercase => output.to_lowercase(),
     };
-
-    if let Ok(action) = action {
-        let mut output: String = match action {
-            Action::Uppercase => input.to_uppercase(),
-            Action::Lowercase => input.to_lowercase(),
-        };
-        if let Some(Flag::Reverse) = flag {
-            output = output.chars().rev().collect()
-        }
-        println!("{}", output);
+    if args.reverse {
+        output = output.chars().rev().collect();
     }
+    output = output
+        .chars()
+        .map(|c| (c as u8 + args.cæsar) as char)
+        .collect();
+    println!("{}", output);
 }
